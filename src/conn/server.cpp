@@ -3,13 +3,13 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <sys/epoll.h>
-#include "conn/server.h"
-#include "conn/channel.h"
-#include "conn/epoll_gs.h"
+#include <conn/server.h>
+#include <conn/channel.h>
+#include <conn/event_loop.h>
 
 
-Server::Server() : listen_fd(-1), epoll_gs(), channel_read_callback(nullptr), channel_write_callback(nullptr)
+Server::Server() : listen_fd(-1), event_loop_ptr(new Event_Loop()),
+                    channel_read_callback(nullptr), channel_write_callback(nullptr)
 {
 
 }
@@ -18,6 +18,8 @@ Server::~Server()
 {
     if(listen_fd >= 0)
         close(listen_fd);
+
+    delete event_loop_ptr;
 }
 
 int Server::initialize(int port)
@@ -29,7 +31,7 @@ int Server::initialize(int port)
     svraddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     // TCP non-block close-on-exec
-    int listen_fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+    listen_fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
     if(listen_fd < 0)
     {
         return -1;
@@ -51,19 +53,17 @@ int Server::initialize(int port)
         return -1;
     }
 
+    printf("Server start listening on port %d...\n", port);
     return listen_fd;
 }
 
 void Server::run()
 {
-    epoll_gs.create();
-
-    ChannelPtr accept_channel(new Channel(listen_fd));
+    ChannelPtr accept_channel(new Channel(listen_fd, event_loop_ptr));
     accept_channel->set_read_callback(std::bind(&Server::accept_callback, this));
-    epoll_event ev = create_epoll_event(EPOLLIN | EPOLLPRI, accept_channel);
-    epoll_gs.add(listen_fd, ev);
+    accept_channel->enable_read();
 
-    epoll_gs.loop_dispatch();
+    event_loop_ptr->loop();
 }
 
 void Server::set_channel_read_callback(ChannelEventCallback channel_rcb)
@@ -80,22 +80,22 @@ void Server::accept_callback()
 {
     struct sockaddr_in client_addr;
     socklen_t client_addr_len = sizeof(client_addr);;
-    int connfd = accept(listen_fd, (struct sockaddr *)&client_addr, &client_addr_len);
+    int conn_fd = accept(listen_fd, (struct sockaddr *)&client_addr, &client_addr_len);
 
-    if(connfd < 0)
+    if(conn_fd < 0)
     {
         printf("[ERROR] Failed to connect client.\n");
         return;
     }
 
-    // set connfd non-blocking
-    fcntl(connfd, F_SETFL, fcntl(connfd, F_GETFL, 0) | O_NONBLOCK);
+    // set conn_fd non-blocking
+    fcntl(conn_fd, F_SETFL, fcntl(conn_fd, F_GETFL, 0) | O_NONBLOCK);
 
-    // create channel and add connfd into epoll
-    ChannelPtr new_channel(new Channel(connfd));
+    // FIXME 如果这里的channel是shared_ptr的话 这个shared_ptr是不是根本发挥不了作用
+    // create channel and add conn_fd into epoll
+    ChannelPtr new_conn_channel(new Channel(conn_fd, event_loop_ptr));
     // channel_read_callback为Server的成员变量 而非成员函数 bind时不能加this
-    new_channel->set_read_callback(std::bind(Server::channel_read_callback, new_channel));
-    new_channel->set_write_callback(std::bind(Server::channel_write_callback, new_channel));
-    epoll_event ev = create_epoll_event(EPOLLIN | EPOLLPRI, new_channel);
-    epoll_gs.add(connfd, ev);
+    new_conn_channel->set_read_callback(std::bind(Server::channel_read_callback, new_conn_channel));
+    new_conn_channel->set_write_callback(std::bind(Server::channel_write_callback, new_conn_channel));
+    new_conn_channel->enable_read();
 }

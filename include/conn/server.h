@@ -1,11 +1,11 @@
 #ifndef EVENT_H
 #define EVENT_H
 
-// #include <vector>
-#include "conn/epoll_gs.h"
 #include <conn/comm.h>
 
 #define MAX_EVENTS 32       //epoll_wait一次性监听最大的事件数量
+
+class Event_Loop;
 
 class Server
 {
@@ -25,14 +25,13 @@ private:
     void accept_callback();
 
     int listen_fd;
-    Epoll epoll_gs;
+    // Epoll epoll_gs;
+    Event_Loop* event_loop_ptr;
 
     //ChannelPtr accept_channel;
 
     ChannelEventCallback channel_read_callback;
     ChannelEventCallback channel_write_callback;
-
-    //std::vector<ChannelPtr> channel_ptrs;
 };
 
 #endif
