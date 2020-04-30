@@ -1,0 +1,41 @@
+/*
+protoc用法示例
+    protoc -I=$SRC_DIR --cpp_out=$DST_DIR $SRC_DIR/xxx.proto
+    protoc -I=./ --cpp_out=./ ./msg_pb3.proto
+*/
+
+syntax = "proto3";
+
+package GameServerMsg;
+
+message TimeStamp {
+    int64 t_stamp = 1;
+}
+
+message PlayerInfo {
+    int64 id = 1;
+    string name = 2;
+    uint32 level = 3;
+
+    TimeStamp t_online = 4;         // 最近一次上线时间
+    TimeStamp t_offline = 5;        // 最近一次离线时间
+}
+
+message SimpleMsg {
+    int64 id = 1;
+    string name = 2;
+    TimeStamp t_curr = 3;           // 消息时间戳
+    string content = 4;
+
+    PlayerInfo player_info = 5;     // 玩家信息
+
+    enum Task {
+        Unknown = 0;
+        Echo = 1;
+        Time = 2;
+        Login = 3;
+        Logout = 4;
+        Query = 5;
+    }
+    Task request = 15;              // request类型
+}

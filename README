@@ -1,3 +1,7 @@
+0.环境
+    Ubuntu16.04 gcc-5.4.0
+    protobuf-3.11.4
+
 1.编译
     （二选一）
     对于CMakeLists.txt
@@ -15,15 +19,27 @@
         ./bin/echoclient 127.0.0.1 9876
         ./bin/echoclient 127.0.0.1 9876
 
+    对于task/protobuf_msg练习作业
+        ./bin/protobuf_server 9876   # 9876为端口号
+        ./bin/protobuf_server 127.0.0.1 9876
+        ./bin/protobuf_server 127.0.0.1 9876
 
 3.练习作业说明
-    task/echo_server练习作业
-        实现了conn库，主要参考于陈硕的https://github.com/chenshuo/muduo 和 https://github.com/shonm520/mu_event
-        conn中，Channel负责每一个连接的读写事件处理，Event_Loop负责epoll事件循环、事件增删改，Server为上层封装
-        只需定义event的callback并通过Server接口传递进去即可，见task/echo_server/echoserver.cpp
+    task/echo_server练习作业 2020.04.17
+        功能：每隔1s，客户端向服务器发送当前时间，服务器回复相同内容给相应客户端
+        实现：实现了conn库，主要参考于陈硕的https://github.com/chenshuo/muduo 和 https://github.com/shonm520/mu_event
+             conn中，Channel负责每一个连接的读写事件处理，Event_Loop负责epoll事件循环、事件增删改，Server为上层封装
+             只需定义event的callback并通过Server接口传递进去即可，见task/echo_server/echoserver.cpp
         存在的问题：
-            1.因为某些地方的Channel只适合用Channel*,所以实现的时候是裸指针和智能指针混用，我还没太理清Channel资源的释放时机，资源释放可能存在问题
+            1.因为某些地方的Channel只适合用Channel*，所以实现的时候是裸指针和智能指针混用，我还没太理清Channel资源的释放时机，资源释放可能存在问题
             2.功能待完善，如Buffer，如连接断开时Channel的Handle_read/write/close等等
+    
+    task/protobuf_msg练习作业 2020.04.30
+        功能：每隔1s客户端通过protobuf向服务器发送请求，请求获取服务器的时间戳
+             服务器解析请求，回复当前时间戳给相应客户端
+        实现：基于protobuf3定义了msg_pb3.proto文件
+             通过protoc-3.11.4生成msg_pb3.pb.h和msg_pb3.pb.cc
+             client&server通过protobuf定义和解析消息数据
 
 4.补充
     目录结构
